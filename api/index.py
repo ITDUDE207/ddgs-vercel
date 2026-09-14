@@ -5,38 +5,45 @@ from duckduckgo_search import DDGS
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # Parse query string parameters from URL
+        # 1. Parse URL structure and parameters
         parsed_url = urlparse(self.path)
+        path = parsed_url.path.strip('/')
         query_params = parse_qs(parsed_url.query)
         
-        # Extract the search query 'q'
-        query = query_params.get('q', [None])[0]
-        # Extract 'max' results parameter (default to 5)
-        max_results = int(query_params.get('max', [5])[0])
+        query = query_params.get('q', [None])
+        max_results = int(query_params.get('max', [5]))
 
+        # Check for missing search term
         if not query:
-            self.send_response(400)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": "Missing required query parameter 'q'"}).encode('utf-8'))
+            self.send_json_response(400, {"error": "Missing required query parameter 'q'"})
             return
 
         try:
-            # Query DuckDuckGo using the core library
             with DDGS() as ddgs:
-                results = list(ddgs.text(query, max_results=max_results))
+                # 2. Route requests dynamically based on the path URL
+                if path == "" or path == "text":
+                    results = list(ddgs.text(query, max_results=max_results))
+                    
+                elif path == "images":
+                    results = list(ddgs.images(query, max_results=max_results))
+                    
+                elif path == "news":
+                    results = list(ddgs.news(query, max_results=max_results))
+                    
+                else:
+                    self.send_json_response(444, {"error": f"Endpoint '/{path}' not found. Use /text, /images, or /news."})
+                    return
             
-            # Send successful response
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            # Enable CORS so you can fetch this API from frontend apps
-            self.send_header('Access-Control-Allow-Origin', '*') 
-            self.end_headers()
-            self.wfile.write(json.dumps(results).encode('utf-8'))
+            # Send successful search payloads
+            self.send_json_response(200, results)
             
         except Exception as e:
-            self.send_response(500)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
-            return
+            self.send_json_response(500, {"error": str(e)})
+
+    # Helper method to streamline headers and status code outputs
+    def send_json_response(self, status_code, payload):
+        self.send_response(status_code)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*') # Enable frontend integrations (CORS)
+        self.end_headers()
+        self.wfile.write(json.dumps(payload).encode('utf-8'))
