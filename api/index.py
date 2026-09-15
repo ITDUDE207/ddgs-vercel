@@ -91,12 +91,12 @@ class handler(BaseHTTPRequestHandler):
         parsed_url = urlparse(self.path)
         query_params = parse_qs(parsed_url.query)
         
-        # Safely extract the query string parameter primitive
+        # 🛠️ CRITICAL FIX: Explicitly extract element [0] from the list to get a pure string primitive
         query_list = query_params.get('q', [])
-        query_str = query_list if query_list else None
+        query_str = query_list[0] if query_list else None
         
         try:
-            max_results = int(query_params.get('max',))
+            max_results = int(query_params.get('max', [5])[0])
         except (ValueError, TypeError, IndexError):
             max_results = 5
 
@@ -112,7 +112,7 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(DOCS_HTML.encode('utf-8'))
             return
 
-        # 2. Run scraping operations mapping to the correct new `query` variable names
+        # 2. Run scraping operations passing a verified string primitive to the new library syntax
         try:
             with DDGS(timeout=15) as ddgs:
                 if search_type == "images":
