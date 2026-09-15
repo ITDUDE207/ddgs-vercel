@@ -1,7 +1,6 @@
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 import json
-# FIX: Import directly from the modern ddgs package
 from ddgs import DDGS
 
 # Visual HTML documentation layout
@@ -94,10 +93,10 @@ class handler(BaseHTTPRequestHandler):
         
         # Safely extract the query string parameter primitive
         query_list = query_params.get('q', [])
-        query_str = query_list[0] if query_list else None
+        query_str = query_list if query_list else None
         
         try:
-            max_results = int(query_params.get('max', [5])[0])
+            max_results = int(query_params.get('max',))
         except (ValueError, TypeError, IndexError):
             max_results = 5
 
@@ -113,15 +112,15 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(DOCS_HTML.encode('utf-8'))
             return
 
-        # 2. Run scraping operations using the updated ddgs syntax requirements
+        # 2. Run scraping operations mapping to the correct new `query` variable names
         try:
             with DDGS(timeout=15) as ddgs:
                 if search_type == "images":
-                    results = list(ddgs.images(keywords=query_str, max_results=max_results))
+                    results = list(ddgs.images(query=query_str, max_results=max_results))
                 elif search_type == "news":
-                    results = list(ddgs.news(keywords=query_str, max_results=max_results))
+                    results = list(ddgs.news(query=query_str, max_results=max_results))
                 else:
-                    results = list(ddgs.text(keywords=query_str, max_results=max_results))
+                    results = list(ddgs.text(query=query_str, max_results=max_results))
             
             self.send_json_response(200, results)
             
