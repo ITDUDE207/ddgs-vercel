@@ -45,11 +45,10 @@ DOCS_HTML = """<!DOCTYPE html>
 
         <h2>API Endpoints</h2>
         
-        <!-- Web Search Docs -->
         <div class="endpoint-card">
             <span class="badge get">GET</span>
             <div class="url-structure">/text?q=<span>{query}</span>&max=<span>{count}</span></div>
-            <p style="margin-bottom: 0.75rem;">Fetches standard text-based web search engine engine organic results.</p>
+            <p style="margin-bottom: 0.75rem;">Fetches standard text-based web search engine organic results.</p>
             <ul>
                 <li>• <strong>q</strong> (Required): The search keyword string.</li>
                 <li>• <strong>max</strong> (Optional): Limit total returned arrays (Default: 5).</li>
@@ -57,7 +56,6 @@ DOCS_HTML = """<!DOCTYPE html>
             <p style="margin-top: 0.75rem; font-size: 0.9rem;"><a href="./text?q=artificial+intelligence&max=3" target="_blank">👉 Try Live Web Example</a></p>
         </div>
 
-        <!-- Image Search Docs -->
         <div class="endpoint-card">
             <span class="badge get">GET</span>
             <div class="url-structure">/images?q=<span>{query}</span>&max=<span>{count}</span></div>
@@ -69,7 +67,6 @@ DOCS_HTML = """<!DOCTYPE html>
             <p style="margin-top: 0.75rem; font-size: 0.9rem;"><a href="./images?q=australian+beaches&max=3" target="_blank">👉 Try Live Image Example</a></p>
         </div>
 
-        <!-- News Search Docs -->
         <div class="endpoint-card">
             <span class="badge get">GET</span>
             <div class="url-structure">/news?q=<span>{query}</span>&max=<span>{count}</span></div>
@@ -94,21 +91,21 @@ class handler(BaseHTTPRequestHandler):
         parsed_url = urlparse(self.path)
         query_params = parse_qs(parsed_url.query)
         
-        # Safely capture variables
+        # FIX: Extract the first item from the list as a clean string or None
         query_list = query_params.get('q', [])
-        query = query_list[0] if query_list else None
+        query_str = query_list[0] if query_list else None
         
         try:
             max_results = int(query_params.get('max', [5])[0])
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, IndexError):
             max_results = 5
 
         # Check endpoints path routing 
         path_segments = [seg for seg in parsed_url.path.lower().split('/') if seg]
         search_type = path_segments[-1] if path_segments and "index.py" not in path_segments[-1] else "text"
 
-        # 1. IF NO QUERY PARAMETER IS FOUND: Render the HTML Documentation page
-        if not query:
+        # 1. IF NO QUERY PARAMETER IS FOUND: Render the Documentation
+        if not query_str:
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=UTF-8')
             self.end_headers()
@@ -119,11 +116,12 @@ class handler(BaseHTTPRequestHandler):
         try:
             with DDGS(timeout=15) as ddgs:
                 if search_type == "images":
-                    results = list(ddgs.images(query, max_results=max_results))
+                    # Explicitly map string to keywords argument
+                    results = list(ddgs.images(keywords=query_str, max_results=max_results))
                 elif search_type == "news":
-                    results = list(ddgs.news(query, max_results=max_results))
+                    results = list(ddgs.news(keywords=query_str, max_results=max_results))
                 else:
-                    results = list(ddgs.text(query, max_results=max_results))
+                    results = list(ddgs.text(keywords=query_str, max_results=max_results))
             
             self.send_json_response(200, results)
             
