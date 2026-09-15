@@ -1,7 +1,8 @@
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 import json
-from duckduckgo_search import DDGS
+# FIX: Import directly from the modern ddgs package
+from ddgs import DDGS
 
 # Visual HTML documentation layout
 DOCS_HTML = """<!DOCTYPE html>
@@ -91,7 +92,7 @@ class handler(BaseHTTPRequestHandler):
         parsed_url = urlparse(self.path)
         query_params = parse_qs(parsed_url.query)
         
-        # CRITICAL FIX: Extract index 0 from list so it maps to a pure string primitive
+        # Safely extract the query string parameter primitive
         query_list = query_params.get('q', [])
         query_str = query_list[0] if query_list else None
         
@@ -112,7 +113,7 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(DOCS_HTML.encode('utf-8'))
             return
 
-        # 2. Run scraping operations safely with string keys
+        # 2. Run scraping operations using the updated ddgs syntax requirements
         try:
             with DDGS(timeout=15) as ddgs:
                 if search_type == "images":
