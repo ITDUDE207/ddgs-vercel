@@ -91,7 +91,7 @@ class handler(BaseHTTPRequestHandler):
         parsed_url = urlparse(self.path)
         query_params = parse_qs(parsed_url.query)
         
-        # FIX: Extract the first item from the list as a clean string or None
+        # CRITICAL FIX: Extract index 0 from list so it maps to a pure string primitive
         query_list = query_params.get('q', [])
         query_str = query_list[0] if query_list else None
         
@@ -104,7 +104,7 @@ class handler(BaseHTTPRequestHandler):
         path_segments = [seg for seg in parsed_url.path.lower().split('/') if seg]
         search_type = path_segments[-1] if path_segments and "index.py" not in path_segments[-1] else "text"
 
-        # 1. IF NO QUERY PARAMETER IS FOUND: Render the Documentation
+        # 1. Render documentation page if no query string is provided
         if not query_str:
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=UTF-8')
@@ -112,11 +112,10 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(DOCS_HTML.encode('utf-8'))
             return
 
-        # 2. IF QUERY PARAMETER EXISTS: Process search extraction 
+        # 2. Run scraping operations safely with string keys
         try:
             with DDGS(timeout=15) as ddgs:
                 if search_type == "images":
-                    # Explicitly map string to keywords argument
                     results = list(ddgs.images(keywords=query_str, max_results=max_results))
                 elif search_type == "news":
                     results = list(ddgs.news(keywords=query_str, max_results=max_results))
@@ -127,7 +126,7 @@ class handler(BaseHTTPRequestHandler):
             
         except Exception as e:
             self.send_json_response(502, {
-                "error": "Upstream error or rate limit", 
+                "error": "Upstream scraper failure", 
                 "details": str(e)
             })
 
